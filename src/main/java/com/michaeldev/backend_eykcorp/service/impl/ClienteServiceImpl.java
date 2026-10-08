@@ -29,9 +29,8 @@ public class ClienteServiceImpl implements ClienteService {
     @Override
     @Transactional
     public ClienteResponseDTO crear(ClienteRequestDTO request) {
-        String correo = clienteMapper.normalizarCorreo(request.correo());
-        if (clienteRepository.existsByCorreo(correo)) {
-            throw new DuplicateResourceException("Ya existe un cliente registrado con el correo: " + correo);
+        if (clienteRepository.existsByCorreo(request.correo())) {
+            throw new DuplicateResourceException("Ya existe un cliente registrado con el correo: " + request.correo());
         }
         // Guardar el cliente en la base de datos
         Cliente guardado = clienteRepository.save(clienteMapper.toEntity(request));
@@ -67,10 +66,9 @@ public class ClienteServiceImpl implements ClienteService {
     public ClienteResponseDTO actualizar(Long id, ClienteRequestDTO request) {
         Cliente cliente = buscarCliente(id);
 
-        String correo = clienteMapper.normalizarCorreo(request.correo());
         // Verificar si el correo ya pertenece a otro cliente
-        if (clienteRepository.existsByCorreoAndIdNot(correo, id)) {
-            throw new DuplicateResourceException("El correo " + correo + " ya pertenece a otro cliente");
+        if (clienteRepository.existsByCorreoAndIdNot(request.correo(), id)) {
+            throw new DuplicateResourceException("El correo " + request.correo() + " ya pertenece a otro cliente");
         }
 
         clienteMapper.updateEntity(cliente, request);

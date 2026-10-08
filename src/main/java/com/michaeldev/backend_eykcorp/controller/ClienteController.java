@@ -1,10 +1,12 @@
 package com.michaeldev.backend_eykcorp.controller;
 
+import com.michaeldev.backend_eykcorp.dto.ApiResponse;
 import com.michaeldev.backend_eykcorp.dto.ClienteRequestDTO;
 import com.michaeldev.backend_eykcorp.dto.ClienteResponseDTO;
 import com.michaeldev.backend_eykcorp.service.ClienteService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,38 +31,42 @@ public class ClienteController {
 
     // POST /clientes -> 201 CREATED + HEADER LOCATION
     @PostMapping
-    public ResponseEntity<ClienteResponseDTO> crear(@Valid @RequestBody ClienteRequestDTO request) {
+    public ResponseEntity<ApiResponse<ClienteResponseDTO>> crear(@Valid @RequestBody ClienteRequestDTO request) {
         ClienteResponseDTO creado = clienteService.crear(request);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(creado.id())
                 .toUri();
-        return ResponseEntity.created(location).body(creado);
+        return ResponseEntity.created(location)
+                .body(ApiResponse.success(HttpStatus.CREATED, "Cliente creado correctamente", creado));
     }
 
     // GET /clientes -> 200 OK
     @GetMapping
-    public ResponseEntity<List<ClienteResponseDTO>> listar() {
-        return ResponseEntity.ok(clienteService.listar());
+    public ResponseEntity<ApiResponse<List<ClienteResponseDTO>>> listar() {
+        List<ClienteResponseDTO> clientes = clienteService.listar();
+        return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, "Clientes obtenidos correctamente", clientes));
     }
 
     // GET /clientes/{id} -> 200 OK | 404 NOT FOUND
     @GetMapping("/{id}")
-    public ResponseEntity<ClienteResponseDTO> obtenerPorId(@PathVariable Long id) {
-        return ResponseEntity.ok(clienteService.obtenerPorId(id));
+    public ResponseEntity<ApiResponse<ClienteResponseDTO>> obtenerPorId(@PathVariable Long id) {
+        ClienteResponseDTO cliente = clienteService.obtenerPorId(id);
+        return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, "Cliente obtenido correctamente", cliente));
     }
 
     // PUT /clientes/{id} -> 200 OK | 404 NOT FOUND | 409 CONFLICT
     @PutMapping("/{id}")
-    public ResponseEntity<ClienteResponseDTO> actualizar(@PathVariable Long id,
+    public ResponseEntity<ApiResponse<ClienteResponseDTO>> actualizar(@PathVariable Long id,
             @Valid @RequestBody ClienteRequestDTO request) {
-        return ResponseEntity.ok(clienteService.actualizar(id, request));
+        ClienteResponseDTO actualizado = clienteService.actualizar(id, request);
+        return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, "Cliente actualizado correctamente", actualizado));
     }
 
-    // DELETE /clientes/{id} -> 204 NO CONTENT | 404 NOT FOUND
+    // DELETE /clientes/{id} -> 200 OK | 404 NOT FOUND
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> eliminar(@PathVariable Long id) {
         clienteService.eliminar(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, "Cliente eliminado correctamente", null));
     }
 }

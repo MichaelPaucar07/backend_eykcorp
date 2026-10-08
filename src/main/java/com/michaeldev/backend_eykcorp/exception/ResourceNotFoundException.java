@@ -1,8 +1,10 @@
 package com.michaeldev.backend_eykcorp.exception;
 
-// EXCEPCIÓN PARA RECURSOS NO ENCONTRADOS
-public class ResourceNotFoundException extends RuntimeException {
+import org.springframework.http.HttpStatus;
+
+// EXCEPCIÓN PARA RECURSOS NO ENCONTRADOS (404)
+public class ResourceNotFoundException extends BusinessException {
     public ResourceNotFoundException(String message) {
-        super(message);
+        super(message, HttpStatus.NOT_FOUND);
     }
 }
