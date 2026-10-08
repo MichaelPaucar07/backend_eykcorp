@@ -41,5 +41,19 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # Frontend Vue servido por Nginx (reverse proxy /api -> backend)
+  # Repositorio aparte: por defecto se espera en ../../Vue/frontend_eykcorp
+  frontend:
+    build: ${FRONTEND_PATH:-../../Vue/frontend_eykcorp}
+    image: eykcorp_frontend
+    container_name: eykcorp_frontend
+    environment:
+      BACKEND_URL: http://backend:${SERVER_PORT:-8081}
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
 volumes:
   postgres_data:

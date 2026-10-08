@@ -16,37 +16,61 @@ Microservicio REST para la gestión de clientes (CRUD), desarrollado como parte 
 
 ---
 
-## Ejecución rápida (Docker Compose)
+## Ejecución rápida (Docker Compose — aplicación completa)
+
+Este `docker-compose.yml` levanta **toda la aplicación**: PostgreSQL, backend y el frontend en Vue servido por Nginx. El frontend vive en otro repositorio ([frontend_eykcorp](https://github.com/MichaelPaucar07/frontend_eykcorp)), por lo que ambos deben clonarse con esta estructura de carpetas:
+
+```
+Repositories/
+├── Springboot/backend_eykcorp/   ← este repositorio (aquí está el docker-compose.yml)
+└── Vue/frontend_eykcorp/
+```
+
+> Si el frontend está en otra ruta, se indica con la variable `FRONTEND_PATH` en el `.env` (relativa a esta carpeta).
 
 **Requisito:** tener Docker Desktop instalado y en ejecución.
 
 ```bash
-git clone https://github.com/MichaelPaucar07/backend_eykcorp.git
-cd backend_eykcorp
+mkdir -p Repositories/Springboot Repositories/Vue
+git clone https://github.com/MichaelPaucar07/backend_eykcorp.git Repositories/Springboot/backend_eykcorp
+git clone https://github.com/MichaelPaucar07/frontend_eykcorp.git Repositories/Vue/frontend_eykcorp
+
+cd Repositories/Springboot/backend_eykcorp
 cp .env.example .env
 docker compose up -d --build
 ```
 
-Esto levanta dos contenedores:
+Esto levanta tres contenedores:
 
 | Contenedor | Puerto en el host | Descripción |
 |---|---|---|
+| `eykcorp_frontend` | `3000` | SPA en Vue + Nginx (reverse proxy `/api` → backend) |
 | `eykcorp_backend` | `8081` | API REST |
 | `eykcorp_postgres` | `5433` | PostgreSQL (puerto interno 5432) |
 
-La API queda disponible en **http://localhost:8081/clientes**.
+- Aplicación web: **http://localhost:3000**
+- API directa: **http://localhost:8081/clientes** (o a través de Nginx: http://localhost:3000/api/clientes)
+
+```
+Navegador ──▶ localhost:3000 ──▶ [Nginx: eykcorp_frontend]
+                                   ├── /        → archivos estáticos de Vue (dist/)
+                                   └── /api/... → backend:8081 ──▶ postgres:5432
+```
+
+Como el navegador solo habla con Nginx (mismo origen), en Docker **no se necesita CORS**; CORS solo aplica en desarrollo, cuando Vite corre en `localhost:5173`.
 
 Para verificar que todo esté funcionando:
 
 ```bash
 docker ps
-curl http://localhost:8081/clientes
+curl http://localhost:3000/api/clientes
 ```
 
 Comandos útiles:
 
 ```bash
 docker compose logs -f backend   # ver logs del backend en vivo
+docker compose up -d postgres backend   # levantar solo base de datos y API
 docker compose down              # detener (los datos se conservan)
 docker compose down -v           # detener y borrar los datos
 ```
@@ -84,6 +108,8 @@ Todas las propiedades sensibles o dependientes del entorno se leen desde variabl
 | `JPA_DDL_AUTO` | `update` | Estrategia de Hibernate para el esquema |
 | `JPA_SHOW_SQL` | `true` (local) / `false` (Docker) | Mostrar SQL en consola |
 | `APP_LOG_LEVEL` | `DEBUG` (local) / `INFO` (Docker) | Nivel de log del paquete de la aplicación |
+| `FRONTEND_PATH` | `../../Vue/frontend_eykcorp` | Ruta del repositorio del frontend (build del servicio `frontend`) |
+| `FRONTEND_PORT` | `3000` | Puerto del frontend (Nginx) en el host |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:5173,http://localhost:3000` | Orígenes permitidos para el frontend (separados por coma) |
 
 > El archivo `.env` está excluido de Git (`.gitignore`) y de la imagen Docker (`.dockerignore`).
@@ -139,7 +165,7 @@ Archivos de infraestructura:
 |---|---|
 | `Dockerfile` | Build multi-stage (Maven + JDK → JRE Alpine), usuario sin privilegios |
 | `.dockerignore` | Excluye `target/`, `.git/`, `.env`, etc. del contexto de build |
-| `docker-compose.yml` | Servicios `postgres` y `backend`, red interna, volumen y healthcheck |
+| `docker-compose.yml` | Servicios `postgres`, `backend` y `frontend`, red interna, volumen y healthcheck |
 | `.env.example` | Plantilla de variables de entorno |
 
 ---
@@ -178,7 +204,7 @@ URL base: `http://localhost:8081`
   "nombres": "Michael",
   "apellidos": "Paucar",
   "correo": "michael@test.com",
-  "telefono": "0991234567"
+  "telefono": "+593991234567"
 }
 ```
 
@@ -209,7 +235,7 @@ Los resultados se ordenan por `id` ascendente.
     "nombres": "Michael",
     "apellidos": "Paucar",
     "correo": "michael@test.com",
-    "telefono": "0991234567",
+    "telefono": "+593991234567",
     "fechaCreacion": "2026-10-08T12:31:17.563"
   },
   "errors": null,
@@ -249,7 +275,7 @@ Error de validación (`errors` contiene el detalle por campo):
   "errors": {
     "nombres": "Los nombres son obligatorios",
     "correo": "El correo no tiene un formato válido",
-    "telefono": "El teléfono debe contener solo dígitos (entre 7 y 15)"
+    "telefono": "El teléfono debe tener formato internacional con código de país, ej. +593991234567"
   },
   "timestamp": "2026-10-08T12:31:17.784"
 }
@@ -269,15 +295,15 @@ Error de validación (`errors` contiene el detalle por campo):
 
 ## Reglas de negocio
 
-1. `nombres` y `apellidos` son obligatorios (máx. 100 caracteres).
-2. `correo` es obligatorio, con formato válido (máx. 150 caracteres).
+1. `nombres` y `apellidos` son obligatorios, de 2 a 100 caracteres y **solo letras** (se admiten tildes, `ñ`, y un espacio, apóstrofo o guion entre palabras: `José María`, `Peña-O'Neil`).
+2. `correo` es obligatorio, con formato `usuario@dominio.ext` (exige extensión de dominio) y máx. 150 caracteres.
 3. `correo` es **único**: validado en el servicio (409) y respaldado por una restricción `UNIQUE` en la base de datos para peticiones concurrentes.
 4. Al **actualizar**, un cliente puede conservar su propio correo, pero no usar el de otro cliente.
-5. `telefono` es obligatorio y solo admite dígitos (entre 7 y 15).
+5. `telefono` es obligatorio y se guarda en **formato internacional E.164**: `+<código de país><número>`, por ejemplo `+593991234567`. El frontend pide el número nacional (Ecuador: 10 dígitos, `0991234567`) junto con el código de país y lo convierte.
 6. `fecha_creacion` la asigna el servidor (`@PrePersist`) y no puede modificarse (`updatable = false`).
 7. `id` es autogenerado por la base de datos.
 8. Operaciones sobre un `id` inexistente responden `404`.
-9. Los datos de entrada se **normalizan** antes de validarse: se eliminan espacios al inicio/fin y el correo se guarda en minúsculas (`Ana@Mail.com` y `ana@mail.com` se consideran el mismo correo).
+9. Los datos de entrada se **normalizan** antes de validarse: se eliminan espacios al inicio/fin, se deja un solo espacio entre palabras, el correo se guarda en minúsculas (`Ana@Mail.com` y `ana@mail.com` se consideran el mismo correo) y del teléfono se quitan espacios, guiones y paréntesis (`+593 99 123 4567` → `+593991234567`).
 
 ---
 
@@ -295,7 +321,8 @@ Error de validación (`errors` contiene el detalle por campo):
 - **Paginación** con un DTO propio (`PageResponse`) en lugar de serializar `Page` de Spring, cuya estructura JSON no es estable. Tamaño máximo de página limitado a 100.
 - **Transacciones**: `@Transactional` en operaciones de escritura y `readOnly = true` en lecturas.
 - **Logs**: `INFO` en operaciones de escritura, `DEBUG` en lecturas, `WARN` en errores de negocio/validación y `ERROR` con stacktrace en errores inesperados.
-- **CORS** configurable por variable de entorno; solo permite los métodos usados por la API y expone el header `Location`.
+- **CORS** configurable por variable de entorno; solo permite los métodos usados por la API y expone el header `Location`. En Docker no se usa, porque Nginx sirve el frontend y la API bajo el mismo origen.
+- **Reverse proxy**: con `server.forward-headers-strategy=framework`, el backend respeta los headers `X-Forwarded-*` de Nginx (el header `Location` de un `201` apunta a `http://localhost:3000/api/clientes/{id}`).
 - **Docker**:
   - Imagen multi-stage: la imagen final solo contiene el JRE y el `.jar`.
   - La aplicación se ejecuta con un usuario sin privilegios (`spring`).
@@ -311,7 +338,7 @@ Error de validación (`errors` contiene el detalle por campo):
 # Crear
 curl -i -X POST http://localhost:8081/clientes \
   -H "Content-Type: application/json" \
-  -d '{"nombres":"Michael","apellidos":"Paucar","correo":"michael@test.com","telefono":"0991234567"}'
+  -d '{"nombres":"Michael","apellidos":"Paucar","correo":"michael@test.com","telefono":"+593991234567"}'
 
 # Listar (paginado)
 curl -i "http://localhost:8081/clientes?page=0&size=10"
@@ -322,7 +349,7 @@ curl -i http://localhost:8081/clientes/1
 # Actualizar
 curl -i -X PUT http://localhost:8081/clientes/1 \
   -H "Content-Type: application/json" \
-  -d '{"nombres":"Michael A.","apellidos":"Paucar","correo":"michael@test.com","telefono":"0991234567"}'
+  -d '{"nombres":"Michael A.","apellidos":"Paucar","correo":"michael@test.com","telefono":"+593991234567"}'
 
 # Eliminar
 curl -i -X DELETE http://localhost:8081/clientes/1
