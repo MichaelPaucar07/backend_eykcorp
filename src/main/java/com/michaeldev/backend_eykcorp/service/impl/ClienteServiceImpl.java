@@ -44,13 +44,14 @@ public class ClienteServiceImpl implements ClienteService {
     @Transactional(readOnly = true)
     public List<ClienteResponseDTO> listar() {
         log.debug("Listando clientes");
-        // Obtener todos los clientes de la base de datos y convertirlos a DTOs de respuesta
+        // Obtener todos los clientes de la base de datos y convertirlos a DTOs de
+        // respuesta
         return clienteRepository.findAll(Sort.by(Sort.Direction.ASC, "id"))
                 .stream()
                 .map(clienteMapper::toResponse)
                 .toList();
     }
- 
+
     // MÉTODO PARA OBTENER UN CLIENTE POR SU ID
     @Override
     @Transactional(readOnly = true)
@@ -77,6 +78,7 @@ public class ClienteServiceImpl implements ClienteService {
         log.info("Cliente con id {} actualizado", id);
         return clienteMapper.toResponse(actualizado);
     }
+
     // MÉTODO PARA ELIMINAR UN CLIENTE EXISTENTE
     @Override
     @Transactional
@@ -89,7 +91,8 @@ public class ClienteServiceImpl implements ClienteService {
         log.info("Cliente con id {} eliminado", id);
     }
 
-    // MÉTODO PRIVADO PARA BUSCAR UN CLIENTE POR SU ID O LANZAR UNA EXCEPCIÓN SI NO EXISTE
+    // MÉTODO PRIVADO PARA BUSCAR UN CLIENTE POR SU ID O LANZAR UNA EXCEPCIÓN SI NO
+    // EXISTE
     private Cliente buscarCliente(Long id) {
         // Buscar el cliente en la base de datos o lanzar una excepción si no existe
         return clienteRepository.findById(id)
