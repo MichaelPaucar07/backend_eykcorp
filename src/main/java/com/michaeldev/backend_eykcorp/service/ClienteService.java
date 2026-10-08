@@ -2,15 +2,14 @@ package com.michaeldev.backend_eykcorp.service;
 
 import com.michaeldev.backend_eykcorp.dto.ClienteRequestDTO;
 import com.michaeldev.backend_eykcorp.dto.ClienteResponseDTO;
-
-import java.util.List;
+import com.michaeldev.backend_eykcorp.dto.PageResponse;
 
 // INTERFAZ DEL SERVICIO PARA LA ENTIDAD CLIENTE
 public interface ClienteService {
 
     ClienteResponseDTO crear(ClienteRequestDTO request);
 
-    List<ClienteResponseDTO> listar();
+    PageResponse<ClienteResponseDTO> listar(int page, int size);
 
     ClienteResponseDTO obtenerPorId(Long id);
 

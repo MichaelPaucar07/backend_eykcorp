@@ -11,6 +11,7 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -51,6 +52,21 @@ public class GlobalExceptionHandler {
         HttpStatus status = HttpStatus.BAD_REQUEST;
         return ResponseEntity.status(status)
                 .body(ApiResponse.error(status, "La solicitud contiene datos inválidos", errors));
+    }
+
+    // METODO PARA MANEJAR VALIDACIONES DE PARÁMETROS (@RequestParam, @PathVariable)
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleParameterValidation(HandlerMethodValidationException ex,
+            HttpServletRequest request) {
+        Map<String, String> errors = new LinkedHashMap<>();
+        ex.getParameterValidationResults().forEach(result -> result.getResolvableErrors()
+                .forEach(error -> errors.putIfAbsent(result.getMethodParameter().getParameterName(),
+                        error.getDefaultMessage())));
+
+        log.warn("Parámetros inválidos en {}: {}", request.getRequestURI(), errors);
+        HttpStatus status = HttpStatus.BAD_REQUEST;
+        return ResponseEntity.status(status)
+                .body(ApiResponse.error(status, "Los parámetros de la solicitud son inválidos", errors));
     }
 
     // METODO PARA MANEJAR LA EXCEPCIÓN HttpMessageNotReadableException

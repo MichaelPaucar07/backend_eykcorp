@@ -2,6 +2,7 @@ package com.michaeldev.backend_eykcorp.service.impl;
 
 import com.michaeldev.backend_eykcorp.dto.ClienteRequestDTO;
 import com.michaeldev.backend_eykcorp.dto.ClienteResponseDTO;
+import com.michaeldev.backend_eykcorp.dto.PageResponse;
 import com.michaeldev.backend_eykcorp.entity.Cliente;
 import com.michaeldev.backend_eykcorp.exception.DuplicateResourceException;
 import com.michaeldev.backend_eykcorp.exception.ResourceNotFoundException;
@@ -10,11 +11,12 @@ import com.michaeldev.backend_eykcorp.repository.ClienteRepository;
 import com.michaeldev.backend_eykcorp.service.ClienteService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Slf4j
 @Service
@@ -38,17 +40,17 @@ public class ClienteServiceImpl implements ClienteService {
         return clienteMapper.toResponse(guardado);
     }
 
-    // MÉTODO PARA LISTAR TODOS LOS CLIENTES
+    // MÉTODO PARA LISTAR LOS CLIENTES DE FORMA PAGINADA
     @Override
     @Transactional(readOnly = true)
-    public List<ClienteResponseDTO> listar() {
-        log.debug("Listando clientes");
-        // Obtener todos los clientes de la base de datos y convertirlos a DTOs de
+    public PageResponse<ClienteResponseDTO> listar(int page, int size) {
+        log.debug("Listando clientes: página {}, tamaño {}", page, size);
+        // Obtener la página solicitada ordenada por id y convertirla a DTOs de
         // respuesta
-        return clienteRepository.findAll(Sort.by(Sort.Direction.ASC, "id"))
-                .stream()
-                .map(clienteMapper::toResponse)
-                .toList();
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "id"));
+        Page<ClienteResponseDTO> clientes = clienteRepository.findAll(pageable)
+                .map(clienteMapper::toResponse);
+        return PageResponse.from(clientes);
     }
 
     // MÉTODO PARA OBTENER UN CLIENTE POR SU ID
