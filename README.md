@@ -18,6 +18,8 @@ Microservicio REST para la gestión de clientes (CRUD), desarrollado como parte 
 
 ## Ejecución rápida (Docker Compose — aplicación completa)
 
+> Las instrucciones paso a paso, con requisitos y solución de problemas, también están en [`INSTRUCCIONES_EJECUCION.txt`](INSTRUCCIONES_EJECUCION.txt).
+
 Este `docker-compose.yml` levanta **toda la aplicación**: PostgreSQL, backend y el frontend en Vue servido por Nginx. El frontend vive en otro repositorio ([frontend_eykcorp](https://github.com/MichaelPaucar07/frontend_eykcorp)), por lo que ambos deben clonarse con esta estructura de carpetas:
 
 ```
