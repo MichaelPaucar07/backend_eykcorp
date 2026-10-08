@@ -22,8 +22,9 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+// MAPEO DE LA TABLA CLIENTES EN LA BASE DE DATOS
 public class Cliente {
-
+    // IDENTIFICADOR ÚNICO DEL CLIENTE
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -33,16 +34,16 @@ public class Cliente {
 
     @Column(nullable = false, length = 100)
     private String apellidos;
-
+    // IDENTIFICADOR ÚNICO DEL CLIENTE, NO PUEDE HABER DOS CLIENTES CON EL MISMO CORREO
     @Column(nullable = false, unique = true, length = 150)
     private String correo;
 
     @Column(nullable = false, length = 15)
     private String telefono;
-
+    // FECHA DE CREACIÓN DEL CLIENTE, NO PUEDE SER MODIFICADA
     @Column(name = "fecha_creacion", nullable = false, updatable = false)
     private LocalDateTime fechaCreacion;
-
+    
     @PrePersist
     protected void onCreate() {
         this.fechaCreacion = LocalDateTime.now();

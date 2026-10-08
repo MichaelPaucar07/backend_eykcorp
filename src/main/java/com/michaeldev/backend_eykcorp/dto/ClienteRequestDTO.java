@@ -5,8 +5,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+// DTO DE SOLICITUD PARA LA ENTIDAD CLIENTE
 public record ClienteRequestDTO(
-
+        // VALIDACIONES DE LOS CAMPOS DEL DTO
         @NotBlank(message = "Los nombres son obligatorios")
         @Size(max = 100, message = "Los nombres no pueden superar los 100 caracteres")
         String nombres,
