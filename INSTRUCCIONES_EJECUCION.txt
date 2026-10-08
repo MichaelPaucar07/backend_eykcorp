@@ -1,0 +1,208 @@
+===============================================================================
+  PRUEBA TÉCNICA EYK CORP - INSTRUCCIONES DE EJECUCIÓN
+  Aplicación Fullstack de Gestión de Clientes
+===============================================================================
+
+Repositorios:
+  - Backend  (Spring Boot): https://github.com/MichaelPaucar07/backend_eykcorp
+  - Frontend (Vue 3):       https://github.com/MichaelPaucar07/frontend_eykcorp
+
+
+-------------------------------------------------------------------------------
+1. REQUISITOS
+-------------------------------------------------------------------------------
+
+  Para ejecutar con Docker (opción recomendada):
+    - Git
+    - Docker Desktop instalado y en ejecución
+
+  Para ejecutar en modo desarrollo (opcional):
+    - Java 17
+    - Node.js 22.18 o superior
+    - Docker (solo para la base de datos)
+
+  Puertos que deben estar libres:
+    - 3000  -> Frontend (Nginx)
+    - 8081  -> Backend (API REST)
+    - 5433  -> PostgreSQL
+    - 5173  -> Frontend en modo desarrollo (solo opción B)
+
+
+-------------------------------------------------------------------------------
+2. CLONAR LOS REPOSITORIOS
+-------------------------------------------------------------------------------
+
+  El archivo docker-compose.yml está en el backend y construye el frontend
+  desde la carpeta vecina, por eso ambos repositorios deben quedar con esta
+  estructura:
+
+    Repositories/
+    ├── Springboot/backend_eykcorp/
+    └── Vue/frontend_eykcorp/
+
+  Comandos:
+
+    mkdir -p Repositories/Springboot Repositories/Vue
+    git clone https://github.com/MichaelPaucar07/backend_eykcorp.git Repositories/Springboot/backend_eykcorp
+    git clone https://github.com/MichaelPaucar07/frontend_eykcorp.git Repositories/Vue/frontend_eykcorp
+
+  Nota: si el frontend se clona en otra ruta, indicarla en la variable
+  FRONTEND_PATH del archivo .env del backend (ruta relativa a la carpeta
+  del backend).
+
+
+===============================================================================
+  OPCIÓN A: APLICACIÓN COMPLETA CON DOCKER COMPOSE (RECOMENDADA)
+===============================================================================
+
+  Paso 1. Entrar a la carpeta del backend:
+
+    cd Repositories/Springboot/backend_eykcorp
+
+  Paso 2. Crear el archivo de variables de entorno a partir de la plantilla:
+
+    cp .env.example .env
+
+    (En Windows CMD: copy .env.example .env)
+
+  Paso 3. Construir y levantar los contenedores:
+
+    docker compose up -d --build
+
+    La primera vez tarda algunos minutos porque descarga las imágenes y
+    compila el backend (Maven) y el frontend (Node).
+
+  Paso 4. Verificar que los 3 contenedores estén corriendo:
+
+    docker ps
+
+    Deben aparecer:
+      eykcorp_frontend   0.0.0.0:3000->80
+      eykcorp_backend    0.0.0.0:8081->8081
+      eykcorp_postgres   0.0.0.0:5433->5432   (healthy)
+
+  Paso 5. Abrir la aplicación en el navegador:
+
+    http://localhost:3000
+
+  Accesos disponibles:
+    - Aplicación web ............. http://localhost:3000
+    - API a través de Nginx ...... http://localhost:3000/api/clientes
+    - API directa ................ http://localhost:8081/clientes
+    - PostgreSQL ................. localhost:5433  (BD: db_eykcorp,
+                                   usuario: postgres, contraseña: root)
+
+  Comandos útiles:
+
+    docker compose logs -f backend      Ver los logs del backend en vivo
+    docker compose logs -f frontend     Ver los logs de Nginx
+    docker compose down                 Detener todo (los datos se conservan)
+    docker compose down -v              Detener todo y BORRAR los datos
+    docker compose up -d --build        Reconstruir después de cambiar código
+
+
+===============================================================================
+  OPCIÓN B: MODO DESARROLLO (SIN DOCKER PARA BACKEND Y FRONTEND)
+===============================================================================
+
+  Paso 1. Levantar solo la base de datos (desde la carpeta del backend):
+
+    cd Repositories/Springboot/backend_eykcorp
+    cp .env.example .env
+    docker compose up -d postgres
+
+  Paso 2. Ejecutar el backend (en la misma carpeta):
+
+    ./mvnw spring-boot:run
+
+    (En Windows CMD/PowerShell: mvnw.cmd spring-boot:run)
+
+    La API queda en http://localhost:8081/clientes
+
+  Paso 3. En otra terminal, ejecutar el frontend:
+
+    cd Repositories/Vue/frontend_eykcorp
+    npm install
+    npm run dev
+
+    La aplicación queda en http://localhost:5173
+
+  Nota: el frontend en desarrollo debe usar el puerto 5173 porque el backend
+  solo permite CORS desde ese origen. Si el puerto está ocupado, Vite muestra
+  un error en lugar de cambiarse a otro puerto.
+
+
+-------------------------------------------------------------------------------
+3. VARIABLES DE ENTORNO (archivo .env del backend)
+-------------------------------------------------------------------------------
+
+  SERVER_PORT=8081                    Puerto de la API
+  DB_URL=jdbc:postgresql://localhost:5433/db_eykcorp
+                                      URL JDBC (en Docker se reemplaza
+                                      automáticamente por postgres:5432)
+  DB_NAME=db_eykcorp                  Nombre de la base de datos
+  DB_PORT=5433                        Puerto de PostgreSQL en el host
+  DB_USERNAME=postgres                Usuario de la base de datos
+  DB_PASSWORD=root                    Contraseña (solo para desarrollo)
+  JPA_SHOW_SQL=true                   Mostrar SQL en consola
+  JPA_DDL_AUTO=update                 Hibernate crea/actualiza la tabla
+  APP_LOG_LEVEL=DEBUG                 Nivel de logs de la aplicación
+  CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+                                      Orígenes permitidos para el frontend
+  FRONTEND_PATH=../../Vue/frontend_eykcorp
+                                      Ruta del repositorio del frontend
+  FRONTEND_PORT=3000                  Puerto del frontend en el host
+
+  Frontend (archivos .env.development y .env.production, ya incluidos):
+    VITE_API_URL=http://localhost:8081  (desarrollo)
+    VITE_API_URL=/api                   (producción / Docker, vía Nginx)
+
+
+-------------------------------------------------------------------------------
+4. PROBAR LA API (OPCIONAL, CON CURL)
+-------------------------------------------------------------------------------
+
+  Crear un cliente:
+    curl -X POST http://localhost:8081/clientes -H "Content-Type: application/json" -d "{\"nombres\":\"Michael\",\"apellidos\":\"Paucar\",\"correo\":\"michael@test.com\",\"telefono\":\"+593991234567\"}"
+
+  Listar clientes (paginado):
+    curl "http://localhost:8081/clientes?page=0&size=10"
+
+  Obtener un cliente por id:
+    curl http://localhost:8081/clientes/1
+
+  Actualizar un cliente:
+    curl -X PUT http://localhost:8081/clientes/1 -H "Content-Type: application/json" -d "{\"nombres\":\"Michael\",\"apellidos\":\"Paucar\",\"correo\":\"michael@test.com\",\"telefono\":\"+593998887776\"}"
+
+  Eliminar un cliente:
+    curl -X DELETE http://localhost:8081/clientes/1
+
+
+-------------------------------------------------------------------------------
+5. SOLUCIÓN DE PROBLEMAS
+-------------------------------------------------------------------------------
+
+  "port is already allocated" al levantar Docker
+    -> Otro programa usa el puerto 3000, 8081 o 5433. Detenerlo o cambiar
+       FRONTEND_PORT, SERVER_PORT o DB_PORT en el archivo .env.
+
+  El frontend muestra "No hay conexión con el servidor"
+    -> Verificar que el backend esté corriendo: docker ps
+    -> En modo desarrollo, confirmar que el frontend esté en el puerto 5173
+       (otro puerto es bloqueado por CORS).
+
+  El backend no arranca y no se conecta a la base de datos
+    -> Revisar que el contenedor eykcorp_postgres esté "healthy": docker ps
+    -> Revisar los logs: docker compose logs backend
+
+  "unable to prepare context" al construir el frontend
+    -> El repositorio del frontend no está en ../../Vue/frontend_eykcorp.
+       Clonarlo con la estructura del punto 2 o ajustar FRONTEND_PATH.
+
+  Reiniciar desde cero (borra todos los datos):
+    docker compose down -v
+    docker compose up -d --build
+
+===============================================================================
+  Autor: Michael Paucar - https://github.com/MichaelPaucar07
+===============================================================================
